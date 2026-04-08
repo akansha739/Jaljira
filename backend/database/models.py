@@ -14,12 +14,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(50), default="developer", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user_roles: Mapped[list["UserRole"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
     tasks_assigned: Mapped[list["Task"]] = relationship(
         back_populates="assignee",
         cascade="all",
@@ -34,70 +31,6 @@ class User(Base):
     )
 
 
-class Role(Base):
-    __tablename__ = "roles"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
-
-    user_roles: Mapped[list["UserRole"]] = relationship(
-        back_populates="role",
-        cascade="all, delete-orphan",
-    )
-    permissions: Mapped[list["RolePermission"]] = relationship(
-        back_populates="role",
-        cascade="all, delete-orphan",
-    )
-
-
-class Permission(Base):
-    __tablename__ = "permissions"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(150), unique=True, index=True)
-
-    roles: Mapped[list["RolePermission"]] = relationship(
-        back_populates="permission",
-        cascade="all, delete-orphan",
-    )
-
-
-class UserRole(Base):
-    __tablename__ = "user_roles"
-
-    user_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    role_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("roles.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-
-    user: Mapped[User] = relationship(back_populates="user_roles")
-    role: Mapped[Role] = relationship(back_populates="user_roles")
-
-
-class RolePermission(Base):
-    __tablename__ = "role_permissions"
-
-    role_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("roles.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    permission_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("permissions.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-
-    role: Mapped[Role] = relationship(back_populates="permissions")
-    permission: Mapped[Permission] = relationship(back_populates="roles")
-
-
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -106,7 +39,7 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), index=True, default="open")
 
-    assigned_to_id: Mapped[int] = mapped_column(
+    assigned_to_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -174,4 +107,3 @@ class TaskActivity(Base):
 
     task: Mapped[Task] = relationship(back_populates="activity")
     actor: Mapped[User] = relationship(back_populates="activity")
-

@@ -8,34 +8,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 class UserCreate(BaseModel):
     email: EmailStr
     password_hash: str
+    role: str = "developer"
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     email: EmailStr
+    role: str
     created_at: datetime
-
-
-class RoleCreate(BaseModel):
-    name: str
-
-
-class RoleRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-
-
-class PermissionCreate(BaseModel):
-    name: str
-
-
-class PermissionRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
 
 
 class TaskCreate(BaseModel):
@@ -50,9 +32,6 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: str | None = None
     assigned_to_id: int | None = None
-
-
-
 
 
 class TaskRead(BaseModel):
@@ -99,4 +78,3 @@ class TaskActivityRead(BaseModel):
     action: str
     details: str | None
     created_at: datetime
-

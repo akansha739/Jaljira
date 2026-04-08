@@ -37,12 +37,12 @@ def register_user(user: schema.UserCreate, db: Session = Depends(get_db)):
     new_user = models.User(
         email=user.email,
         password_hash=hashed_password,
+        role=user.role,
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"message": "User registered successfully"}
-
 
 @tasks_router.post("", response_model=schema.TaskRead)
 def create_task(task_in: schema.TaskCreate, db: Session = Depends(get_db)):
@@ -57,6 +57,18 @@ def create_task(task_in: schema.TaskCreate, db: Session = Depends(get_db)):
     db.refresh(new_task)
     return new_task
 
+
+@tasks_router.get("/assigned/{user_id}", response_model=list[schema.TaskRead])
+def get_tasks_assigned_to_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    tasks = db.query(models.Task).filter(models.Task.assigned_to_id == user_id).all()
+    return tasks
 
 @tasks_router.patch("/{task_id}", response_model=schema.TaskRead)
 def update_task(task_id: int, task_in: schema.TaskUpdate, db: Session = Depends(get_db)):
