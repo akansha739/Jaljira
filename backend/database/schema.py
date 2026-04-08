@@ -25,6 +25,7 @@ class TaskCreate(BaseModel):
     description: str | None = None
     status: str = "open"
     assigned_to_id: int | None = None
+    created_by_id: int
 
 
 class TaskUpdate(BaseModel):
@@ -32,6 +33,7 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: str | None = None
     assigned_to_id: int | None = None
+    updated_by_id: int
 
 
 class TaskRead(BaseModel):
@@ -42,6 +44,7 @@ class TaskRead(BaseModel):
     description: str | None
     status: str
     assigned_to_id: int | None
+    created_by_id: int | None
     created_at: datetime
     updated_at: datetime
 

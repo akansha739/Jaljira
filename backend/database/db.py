@@ -62,22 +62,37 @@ def create_tables():
 
 def _ensure_compatible_schema():
     inspector = inspect(engine)
-    if "users" not in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+    if "users" not in table_names:
         return
 
     user_columns = {column["name"] for column in inspector.get_columns("users")}
-    if "role" in user_columns:
-        return
 
     with engine.begin() as connection:
-        connection.execute(
-            text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'developer'")
-        )
+        if "role" not in user_columns:
+            connection.execute(
+                text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'developer'")
+            )
+
+            if engine.dialect.name != "sqlite":
+                connection.execute(
+                    text(
+                        "UPDATE users SET role = 'developer' "
+                        "WHERE role IS NULL OR role = ''"
+                    )
+                )
+
+        if "tasks" in table_names:
+            task_columns = {column["name"] for column in inspector.get_columns("tasks")}
+            if "created_by_id" not in task_columns:
+                connection.execute(
+                    text("ALTER TABLE tasks ADD COLUMN created_by_id INTEGER NULL")
+                )
 
         if engine.dialect.name != "sqlite":
             connection.execute(
                 text(
-                    "UPDATE users SET role = 'developer' "
-                    "WHERE role IS NULL OR role = ''"
+                    "CREATE INDEX IF NOT EXISTS ix_tasks_created_by_id "
+                    "ON tasks (created_by_id)"
                 )
             )

@@ -20,6 +20,12 @@ class User(Base):
     tasks_assigned: Mapped[list["Task"]] = relationship(
         back_populates="assignee",
         cascade="all",
+        foreign_keys="Task.assigned_to_id",
+    )
+    tasks_created: Mapped[list["Task"]] = relationship(
+        back_populates="creator",
+        cascade="all",
+        foreign_keys="Task.created_by_id",
     )
     comments: Mapped[list["TaskComment"]] = relationship(
         back_populates="author",
@@ -45,13 +51,26 @@ class Task(Base):
         nullable=True,
         index=True,
     )
+    created_by_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    assignee: Mapped[User | None] = relationship(back_populates="tasks_assigned")
+    assignee: Mapped[User | None] = relationship(
+        back_populates="tasks_assigned",
+        foreign_keys=[assigned_to_id],
+    )
+    creator: Mapped[User | None] = relationship(
+        back_populates="tasks_created",
+        foreign_keys=[created_by_id],
+    )
     comments: Mapped[list["TaskComment"]] = relationship(
         back_populates="task",
         cascade="all, delete-orphan",

@@ -22,6 +22,12 @@ pwd_context = CryptContext(
     deprecated="auto",
 )
 
+TASK_CREATOR_ROLES = {
+    "manager",
+    "team_lead",
+    "senior_developer",
+}
+
 
 @router.post("/register")
 def register_user(user: schema.UserCreate, db: Session = Depends(get_db)):
@@ -46,11 +52,37 @@ def register_user(user: schema.UserCreate, db: Session = Depends(get_db)):
 
 @tasks_router.post("", response_model=schema.TaskRead)
 def create_task(task_in: schema.TaskCreate, db: Session = Depends(get_db)):
+    creator = db.query(models.User).filter(models.User.id == task_in.created_by_id).first()
+    if not creator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Creator user not found",
+        )
+
+    if creator.role not in TASK_CREATOR_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only manager, team lead, or senior developer can create tasks",
+        )
+
+    if task_in.assigned_to_id is not None:
+        assignee = (
+            db.query(models.User)
+            .filter(models.User.id == task_in.assigned_to_id)
+            .first()
+        )
+        if not assignee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assigned user not found",
+            )
+
     new_task = models.Task(
         title=task_in.title,
         description=task_in.description,
         status=task_in.status,
         assigned_to_id=task_in.assigned_to_id,
+        created_by_id=task_in.created_by_id,
     )
     db.add(new_task)
     db.commit()
@@ -79,7 +111,33 @@ def update_task(task_id: int, task_in: schema.TaskUpdate, db: Session = Depends(
             detail="Task not found",
         )
 
+    updater = db.query(models.User).filter(models.User.id == task_in.updated_by_id).first()
+    if not updater:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Updater user not found",
+        )
+
+    if updater.id not in {task.created_by_id, task.assigned_to_id}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the task creator or assigned user can update this task",
+        )
+
+    if task_in.assigned_to_id is not None:
+        assignee = (
+            db.query(models.User)
+            .filter(models.User.id == task_in.assigned_to_id)
+            .first()
+        )
+        if not assignee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assigned user not found",
+            )
+
     update_data = task_in.model_dump(exclude_unset=True)
+    update_data.pop("updated_by_id", None)
     for key, value in update_data.items():
         setattr(task, key, value)
 
