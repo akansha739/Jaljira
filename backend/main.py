@@ -1,17 +1,29 @@
+from contextlib import asynccontextmanager
+from multiprocessing import freeze_support
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.api.routes import router as users_router, tasks_router
 from database.db import create_tables
+from database.middleware import AuthMiddleware
 
 
-app=FastAPI(
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    yield
+
+
+app = FastAPI(
     title="JalJira",
     description="It will help to manage your tasks and projects",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -23,11 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-create_tables()
 app.include_router(users_router)
 app.include_router(tasks_router)
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000,reload=True)
+
+    freeze_support()
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

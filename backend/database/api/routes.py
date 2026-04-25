@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from database import models, schema
+from database.auth import create_access_token
 from database.db import get_db
 
 router = APIRouter(
@@ -49,6 +50,23 @@ def register_user(user: schema.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return {"message": "User registered successfully"}
+
+
+@router.post("/login", response_model=schema.TokenResponse)
+def login_user(user: schema.UserLogin, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.email == user.email).first()
+    if not existing or not pwd_context.verify(user.password, existing.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    return {
+        "access_token": create_access_token(existing.id),
+        "token_type": "bearer",
+        "user": existing,
+    }
+
 
 @tasks_router.post("", response_model=schema.TaskRead)
 def create_task(task_in: schema.TaskCreate, db: Session = Depends(get_db)):
