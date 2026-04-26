@@ -1,15 +1,12 @@
 import {
   type CSSProperties,
   type FormEvent,
-  type ReactNode,
   useEffect,
   useMemo,
   useState,
 } from "react"
 import {
-  CheckCircle2,
   ClipboardList,
-  Clock3,
   LayoutDashboard,
   LoaderCircle,
   LogIn,
@@ -28,6 +25,33 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
 import { apiRequest } from "@/lib/api"
 
 type AppPage = "dashboard" | "tasks" | "create" | "profile" | "login"
@@ -204,6 +228,7 @@ function App() {
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [assignedFeedback, setAssignedFeedback] = useState<Feedback | null>(null)
   const [updateFeedback, setUpdateFeedback] = useState<Feedback | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   const stats = useMemo(() => {
     const completedCount = tasks.filter((task) =>
@@ -218,22 +243,16 @@ function App() {
 
     return [
       {
-        label: "Active work",
+        label: "Active",
         value: String(activeCount),
-        detail: "Open or in progress",
-        icon: Clock3,
       },
       {
         label: "Completed",
         value: String(completedCount),
-        detail: "Done tasks",
-        icon: CheckCircle2,
       },
       {
         label: "Waiting",
         value: String(Math.max(waitingCount, 0)),
-        detail: "Todo and queued",
-        icon: ClipboardList,
       },
     ]
   }, [tasks])
@@ -250,9 +269,6 @@ function App() {
         .some((value) => String(value).toLowerCase().includes(normalizedQuery))
     )
   }, [query, tasks])
-
-  const recentTasks = filteredTasks.slice(0, 4)
-  const selectedTask = tasks.find((task) => String(task.id) === updateForm.taskId)
 
   useEffect(() => {
     function handlePopState() {
@@ -334,7 +350,6 @@ function App() {
 
       const createdTask = normalizeTask(payload)
       setTasks((current) => [createdTask, ...current])
-      setUpdateFormFromTask(createdTask)
       setForm({
         title: "",
         description: "",
@@ -377,10 +392,6 @@ function App() {
         type: "success",
         message: `Loaded ${assignedTasks.length} assigned task(s).`,
       })
-
-      if (assignedTasks[0]) {
-        setUpdateFormFromTask(assignedTasks[0])
-      }
     } catch (error) {
       setAssignedFeedback({
         type: "error",
@@ -421,11 +432,11 @@ function App() {
       setTasks((current) =>
         current.map((task) => (task.id === updatedTask.id ? updatedTask : task))
       )
-      setUpdateFormFromTask(updatedTask)
       setUpdateFeedback({
         type: "success",
-        message: `Task "${updatedTask.title}" updated successfully.`,
+        message: `Task updated successfully.`,
       })
+      setTimeout(() => setEditDialogOpen(false), 1000)
     } catch (error) {
       setUpdateFeedback({
         type: "error",
@@ -437,7 +448,7 @@ function App() {
     }
   }
 
-  function setUpdateFormFromTask(task: Task) {
+  function openEditDialog(task: Task) {
     setUpdateForm({
       taskId: String(task.id),
       title: task.title,
@@ -446,6 +457,8 @@ function App() {
       assignedToId: task.assigned_to_id ? String(task.assigned_to_id) : "",
       updatedById: currentUser?.id ? String(currentUser.id) : "",
     })
+    setUpdateFeedback(null)
+    setEditDialogOpen(true)
   }
 
   if (currentPage === "login") {
@@ -458,114 +471,100 @@ function App() {
   }
 
   return (
-    <div
-      className="app-shell"
-      style={{ "--p-density": density } as CSSProperties}
-    >
-      <aside className="app-sidebar">
-        <div className="brand-block">
-          <span className="brand-mark">J</span>
-          <div>
-            <p className="brand-title">Jaljira</p>
-            <p className="brand-subtitle">Task operations</p>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav" aria-label="Primary navigation">
-          {navigationItems.map((item) => (
-            <button
-              className={`nav-link ${
-                currentPage === item.page ? "nav-link-active" : ""
-              }`}
-              key={item.page}
-              type="button"
-              onClick={() => navigateTo(item.page)}
-            >
-              <item.icon className="size-4" />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          {currentUser ? (
-            <div className="user-summary">
-              <span className="user-avatar">{currentUser.email.charAt(0)}</span>
+    <SidebarProvider>
+      <div
+        className="app-shell"
+        style={{ "--p-density": density } as CSSProperties}
+      >
+        <Sidebar>
+          <SidebarHeader>
+            <div className="brand-block">
+              <span className="brand-mark">J</span>
               <div>
-                <p>{currentUser.email}</p>
-                <span>{currentUser.role}</span>
+                <p className="brand-title">Jaljira</p>
+                <p className="brand-subtitle">Tasks</p>
               </div>
             </div>
-          ) : (
-            <Button type="button" onClick={() => navigateTo("login")}>
-              <LogIn className="size-4" />
-              Login
-            </Button>
-          )}
-        </div>
-      </aside>
-
-      <div className="app-workspace">
-        <header className="mobile-nav">
-          <div className="brand-block">
-            <span className="brand-mark">J</span>
-            <p className="brand-title">Jaljira</p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigateTo(currentUser ? "profile" : "login")}
-          >
-            <UserCircle className="size-4" />
-            Account
-          </Button>
-        </header>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navigationItems.map((item) => (
+                    <SidebarMenuItem key={item.page}>
+                      <SidebarMenuButton
+                        isActive={currentPage === item.page}
+                        onClick={() => navigateTo(item.page)}
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+            {currentUser ? (
+              <div className="user-summary">
+                <span className="user-avatar">{currentUser.email.charAt(0)}</span>
+                <div>
+                  <p>{currentUser.email}</p>
+                  <span>{currentUser.role}</span>
+                </div>
+              </div>
+            ) : (
+              <Button type="button" onClick={() => navigateTo("login")}>
+                <LogIn className="size-4" />
+                Login
+              </Button>
+            )}
+          </SidebarFooter>
+        </Sidebar>
 
         <main className="page-flow">
-          <PageHeader
-            currentUser={currentUser}
-            page={currentPage}
-            onCreate={() => navigateTo("create")}
-            onLogin={() => navigateTo("login")}
-          />
+          <header className="page-header">
+            <h1>{pageLabels[currentPage]}</h1>
+            <div className="header-actions">
+              {!currentUser && (
+                <Button type="button" variant="outline" onClick={() => navigateTo("login")}>
+                  <LogIn className="size-4" />
+                  Login
+                </Button>
+              )}
+              <Button type="button" onClick={() => navigateTo("create")}>
+                <Plus className="size-4" />
+                New task
+              </Button>
+            </div>
+          </header>
 
-          {currentPage === "dashboard" ? (
+          {currentPage === "dashboard" && (
             <DashboardPage
               filteredTasks={filteredTasks}
               query={query}
-              recentTasks={recentTasks}
               stats={stats}
-              tasks={tasks}
-              onCreate={() => navigateTo("create")}
-              onEdit={(task) => {
-                setUpdateFormFromTask(task)
-                navigateTo("tasks")
-              }}
+              onEdit={openEditDialog}
               onQueryChange={setQuery}
             />
-          ) : null}
+          )}
 
-          {currentPage === "tasks" ? (
+          {currentPage === "tasks" && (
             <TasksPage
               assignedFeedback={assignedFeedback}
               assignedUserId={assignedUserId}
               filteredTasks={filteredTasks}
               isLoadingAssignedTasks={isLoadingAssignedTasks}
-              isUpdatingTask={isUpdatingTask}
               query={query}
-              selectedTask={selectedTask}
-              updateFeedback={updateFeedback}
-              updateForm={updateForm}
               onAssignedUserIdChange={setAssignedUserId}
+              onEdit={openEditDialog}
               onLoadAssignedTasks={handleLoadAssignedTasks}
               onQueryChange={setQuery}
-              onSelectTask={setUpdateFormFromTask}
-              onUpdateFormChange={updateFormValue}
-              onUpdateTask={handleUpdateTask}
             />
-          ) : null}
+          )}
 
-          {currentPage === "create" ? (
+          {currentPage === "create" && (
             <CreateTaskPage
               feedback={feedback}
               form={form}
@@ -573,9 +572,9 @@ function App() {
               onChange={updateCreateForm}
               onSubmit={handleSubmit}
             />
-          ) : null}
+          )}
 
-          {currentPage === "profile" ? (
+          {currentPage === "profile" && (
             <ProfilePage
               currentUser={currentUser}
               density={density}
@@ -583,130 +582,116 @@ function App() {
               onLogin={() => navigateTo("login")}
               onLogout={handleLogout}
             />
-          ) : null}
+          )}
         </main>
-      </div>
-    </div>
-  )
-}
 
-function PageHeader({
-  currentUser,
-  page,
-  onCreate,
-  onLogin,
-}: {
-  currentUser: CurrentUser | null
-  page: AppPage
-  onCreate: () => void
-  onLogin: () => void
-}) {
-  return (
-    <section className="page-header">
-      <div>
-        <p className="eyebrow">{currentUser ? currentUser.role : "Guest"}</p>
-        <h1>{pageLabels[page]}</h1>
-        <p>
-          {currentUser
-            ? `Signed in as ${currentUser.email}`
-            : "Sign in to sync task changes with the API."}
-        </p>
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Task</DialogTitle>
+              <DialogDescription>
+                Update task #{updateForm.taskId}
+              </DialogDescription>
+            </DialogHeader>
+            <form className="compact-form" onSubmit={handleUpdateTask}>
+              <Field label="Title">
+                <Input
+                  value={updateForm.title}
+                  onChange={(e) => updateFormValue("title", e.target.value)}
+                  placeholder="Task title"
+                />
+              </Field>
+              <Field label="Description">
+                <Textarea
+                  value={updateForm.description}
+                  onChange={(e) => updateFormValue("description", e.target.value)}
+                  placeholder="Task description"
+                />
+              </Field>
+              <div className="form-grid">
+                <Field label="Status">
+                  <Input
+                    value={updateForm.status}
+                    onChange={(e) => updateFormValue("status", e.target.value)}
+                    placeholder="open"
+                  />
+                </Field>
+                <Field label="Assigned To">
+                  <Input
+                    inputMode="numeric"
+                    value={updateForm.assignedToId}
+                    onChange={(e) => updateFormValue("assignedToId", e.target.value)}
+                    placeholder="User ID"
+                  />
+                </Field>
+              </div>
+              {updateFeedback && <FeedbackMessage feedback={updateFeedback} />}
+              <Button className="w-full" disabled={isUpdatingTask} type="submit">
+                {isUpdatingTask ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                {isUpdatingTask ? "Updating..." : "Update task"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
-      <div className="header-actions">
-        <Button type="button" variant="outline" onClick={onLogin}>
-          <LogIn className="size-4" />
-          Login
-        </Button>
-        <Button type="button" onClick={onCreate}>
-          <Plus className="size-4" />
-          New task
-        </Button>
-      </div>
-    </section>
+    </SidebarProvider>
   )
 }
 
 function DashboardPage({
   filteredTasks,
   query,
-  recentTasks,
   stats,
-  tasks,
-  onCreate,
   onEdit,
   onQueryChange,
 }: {
   filteredTasks: Task[]
   query: string
-  recentTasks: Task[]
   stats: Array<{
     label: string
     value: string
-    detail: string
-    icon: typeof Clock3
   }>
-  tasks: Task[]
-  onCreate: () => void
   onEdit: (task: Task) => void
   onQueryChange: (value: string) => void
 }) {
   return (
     <div className="dashboard-layout">
-      <section className="summary-panel">
-        <div className="summary-copy">
-          <Badge variant="secondary">{tasks.length} total tasks</Badge>
-          <h2>Shape the queue before it shapes the day.</h2>
+      <section className="dashboard-hero">
+        <div className="section-copy">
+          <p className="section-kicker">Task overview</p>
+          <h2>Keep the queue clear and the active work visible.</h2>
           <p>
-            Keep the working set visible, pull assigned tasks from the API, and
-            update ownership without burying the primary list under forms.
+            A tighter summary of current task load, followed by the most recent
+            work items.
           </p>
         </div>
-        <div className="summary-actions">
-          <Button type="button" onClick={onCreate}>
-            <Plus className="size-4" />
-            Add task
-          </Button>
-        </div>
+        <Badge className="dashboard-count" variant="secondary">
+          {filteredTasks.length} task{filteredTasks.length === 1 ? "" : "s"}
+        </Badge>
       </section>
 
-      <section className="metrics-strip" aria-label="Task status summary">
+      <section className="metrics-strip">
         {stats.map((stat) => (
           <div className="metric-tile" key={stat.label}>
-            <div>
-              <p>{stat.label}</p>
-              <strong>{stat.value}</strong>
-            </div>
-            <stat.icon className="size-5" />
-            <span>{stat.detail}</span>
+            <p>{stat.label}</p>
+            <strong>{stat.value}</strong>
           </div>
         ))}
       </section>
 
-      <section className="dashboard-grid">
-        <div className="task-section">
-          <SectionHeading
-            detail={`${filteredTasks.length} visible`}
-            title="Recent tasks"
-          />
+      <section className="task-section">
+        <div className="section-toolbar">
+          <div className="section-copy">
+            <h2>Recent Tasks</h2>
+            <p>The latest items, ready to scan and edit without extra clutter.</p>
+          </div>
           <SearchBox query={query} onQueryChange={onQueryChange} />
-          <TaskList tasks={recentTasks} onEdit={onEdit} />
         </div>
-
-        <div className="status-rail">
-          <SectionHeading detail="By status" title="Flow" />
-          {["Todo", "In Progress", "Done"].map((status) => (
-            <div className="status-row" key={status}>
-              <span>{status}</span>
-              <strong>
-                {
-                  tasks.filter(
-                    (task) => task.status.toLowerCase() === status.toLowerCase()
-                  ).length
-                }
-              </strong>
-            </div>
-          ))}
-        </div>
+        <TaskTable tasks={filteredTasks.slice(0, 5)} onEdit={onEdit} />
       </section>
     </div>
   )
@@ -717,97 +702,59 @@ function TasksPage({
   assignedUserId,
   filteredTasks,
   isLoadingAssignedTasks,
-  isUpdatingTask,
   query,
-  selectedTask,
-  updateFeedback,
-  updateForm,
   onAssignedUserIdChange,
+  onEdit,
   onLoadAssignedTasks,
   onQueryChange,
-  onSelectTask,
-  onUpdateFormChange,
-  onUpdateTask,
 }: {
   assignedFeedback: Feedback | null
   assignedUserId: string
   filteredTasks: Task[]
   isLoadingAssignedTasks: boolean
-  isUpdatingTask: boolean
   query: string
-  selectedTask: Task | undefined
-  updateFeedback: Feedback | null
-  updateForm: UpdateTaskFormState
   onAssignedUserIdChange: (value: string) => void
+  onEdit: (task: Task) => void
   onLoadAssignedTasks: (event: FormEvent<HTMLFormElement>) => void
   onQueryChange: (value: string) => void
-  onSelectTask: (task: Task) => void
-  onUpdateFormChange: <K extends keyof UpdateTaskFormState>(
-    key: K,
-    value: UpdateTaskFormState[K]
-  ) => void
-  onUpdateTask: (event: FormEvent<HTMLFormElement>) => void
 }) {
   return (
     <div className="tasks-layout">
       <section className="task-section">
         <div className="section-toolbar">
-          <SectionHeading
-            detail={`${filteredTasks.length} matching`}
-            title="Task queue"
-          />
+          <h2>All Tasks</h2>
           <SearchBox query={query} onQueryChange={onQueryChange} />
         </div>
-        <TaskList tasks={filteredTasks} onEdit={onSelectTask} />
+        <TaskTable tasks={filteredTasks} onEdit={onEdit} />
       </section>
 
       <aside className="work-panel">
-        <section className="panel-section">
-          <SectionHeading detail="GET /tasks/assigned/{user_id}" title="Assigned" />
-          <form className="compact-form" onSubmit={onLoadAssignedTasks}>
-            <Field label="User ID">
-              <Input
-                required
-                inputMode="numeric"
-                value={assignedUserId}
-                onChange={(event) =>
-                  onAssignedUserIdChange(event.target.value)
-                }
-                placeholder="2"
-              />
-            </Field>
-            {assignedFeedback ? (
-              <FeedbackMessage feedback={assignedFeedback} />
-            ) : null}
-            <Button
-              className="w-full"
-              disabled={isLoadingAssignedTasks}
-              type="submit"
-              variant="secondary"
-            >
-              {isLoadingAssignedTasks ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              {isLoadingAssignedTasks ? "Loading..." : "Load assigned"}
-            </Button>
-          </form>
-        </section>
-
-        <section className="panel-section">
-          <SectionHeading
-            detail={selectedTask ? `Task #${selectedTask.id}` : "Select a task"}
-            title="Update"
-          />
-          <UpdateTaskForm
-            feedback={updateFeedback}
-            form={updateForm}
-            isUpdatingTask={isUpdatingTask}
-            onChange={onUpdateFormChange}
-            onSubmit={onUpdateTask}
-          />
-        </section>
+        <h3>Load Assigned Tasks</h3>
+        <form className="compact-form" onSubmit={onLoadAssignedTasks}>
+          <Field label="User ID">
+            <Input
+              required
+              inputMode="numeric"
+              value={assignedUserId}
+              onChange={(e) => onAssignedUserIdChange(e.target.value)}
+              placeholder="2"
+            />
+          </Field>
+          {assignedFeedback && <FeedbackMessage feedback={assignedFeedback} />}
+          <Button
+            className="w-full"
+            disabled={isLoadingAssignedTasks}
+            type="submit"
+            variant="secondary"
+          >
+            {isLoadingAssignedTasks ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
+            {isLoadingAssignedTasks ? "Loading..." : "Load"}
+          </Button>
+        </form>
       </aside>
     </div>
   )
@@ -831,28 +778,19 @@ function CreateTaskPage({
 }) {
   return (
     <div className="create-layout">
-      <section className="form-intro">
-        <Badge variant="secondary">POST /tasks</Badge>
-        <h2>Give the task enough shape to move.</h2>
-        <p>
-          Keep creation focused: title and owner first, detail second. The form
-          sits beside guidance instead of becoming another identical card.
-        </p>
-      </section>
-
       <form className="task-form" onSubmit={onSubmit}>
         <Field label="Title">
           <Input
             required
             value={form.title}
-            onChange={(event) => onChange("title", event.target.value)}
+            onChange={(e) => onChange("title", e.target.value)}
             placeholder="Enter task title"
           />
         </Field>
         <Field label="Description">
           <Textarea
             value={form.description}
-            onChange={(event) => onChange("description", event.target.value)}
+            onChange={(e) => onChange("description", e.target.value)}
             placeholder="Enter task description"
           />
         </Field>
@@ -860,7 +798,7 @@ function CreateTaskPage({
           <Field label="Status">
             <Input
               value={form.status}
-              onChange={(event) => onChange("status", event.target.value)}
+              onChange={(e) => onChange("status", e.target.value)}
               placeholder="open"
             />
           </Field>
@@ -869,7 +807,7 @@ function CreateTaskPage({
               required
               inputMode="numeric"
               value={form.createdById}
-              onChange={(event) => onChange("createdById", event.target.value)}
+              onChange={(e) => onChange("createdById", e.target.value)}
               placeholder="1"
             />
           </Field>
@@ -877,12 +815,12 @@ function CreateTaskPage({
             <Input
               inputMode="numeric"
               value={form.assignedToId}
-              onChange={(event) => onChange("assignedToId", event.target.value)}
+              onChange={(e) => onChange("assignedToId", e.target.value)}
               placeholder="2"
             />
           </Field>
         </div>
-        {feedback ? <FeedbackMessage feedback={feedback} /> : null}
+        {feedback && <FeedbackMessage feedback={feedback} />}
         <Button disabled={isSubmitting} type="submit">
           {isSubmitting ? (
             <LoaderCircle className="size-4 animate-spin" />
@@ -914,11 +852,11 @@ function ProfilePage({
       <section className="identity-panel">
         <UserCircle className="size-10" />
         <div>
-          <h2>{currentUser?.email ?? "Guest workspace"}</h2>
+          <h2>{currentUser?.email ?? "Guest"}</h2>
           <p>
             {currentUser
-              ? `User ${currentUser.id} · ${currentUser.role}`
-              : "Login to use protected task endpoints."}
+              ? `${currentUser.role} · User ${currentUser.id}`
+              : "Login to access protected features"}
           </p>
         </div>
         <Button type="button" onClick={currentUser ? onLogout : onLogin}>
@@ -932,12 +870,9 @@ function ProfilePage({
       </section>
 
       <section className="settings-panel">
-        <SectionHeading
-          detail="Live-mode density param"
-          title="Layout density"
-        />
+        <h3>Layout Density</h3>
         <div className="density-control">
-          <span>Packed</span>
+          <span>Compact</span>
           <Slider
             aria-label="Density"
             max={1.4}
@@ -946,99 +881,17 @@ function ProfilePage({
             value={[density]}
             onValueChange={(value) => onDensityChange(value[0] ?? 1)}
           />
-          <span>Airy</span>
+          <span>Spacious</span>
         </div>
         <p>
-          Current density: <strong>{density.toFixed(2)}</strong>
+          <strong>{density.toFixed(2)}</strong>
         </p>
       </section>
     </div>
   )
 }
 
-function UpdateTaskForm({
-  feedback,
-  form,
-  isUpdatingTask,
-  onChange,
-  onSubmit,
-}: {
-  feedback: Feedback | null
-  form: UpdateTaskFormState
-  isUpdatingTask: boolean
-  onChange: <K extends keyof UpdateTaskFormState>(
-    key: K,
-    value: UpdateTaskFormState[K]
-  ) => void
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void
-}) {
-  return (
-    <form className="compact-form" onSubmit={onSubmit}>
-      <div className="form-grid">
-        <Field label="Task ID">
-          <Input
-            required
-            inputMode="numeric"
-            value={form.taskId}
-            onChange={(event) => onChange("taskId", event.target.value)}
-            placeholder="1"
-          />
-        </Field>
-        <Field label="Updated By ID">
-          <Input
-            required
-            inputMode="numeric"
-            value={form.updatedById}
-            onChange={(event) => onChange("updatedById", event.target.value)}
-            placeholder="1"
-          />
-        </Field>
-      </div>
-      <Field label="Title">
-        <Input
-          value={form.title}
-          onChange={(event) => onChange("title", event.target.value)}
-          placeholder="Updated title"
-        />
-      </Field>
-      <Field label="Description">
-        <Textarea
-          value={form.description}
-          onChange={(event) => onChange("description", event.target.value)}
-          placeholder="Updated description"
-        />
-      </Field>
-      <div className="form-grid">
-        <Field label="Status">
-          <Input
-            value={form.status}
-            onChange={(event) => onChange("status", event.target.value)}
-            placeholder="open"
-          />
-        </Field>
-        <Field label="Assigned To ID">
-          <Input
-            inputMode="numeric"
-            value={form.assignedToId}
-            onChange={(event) => onChange("assignedToId", event.target.value)}
-            placeholder="2"
-          />
-        </Field>
-      </div>
-      {feedback ? <FeedbackMessage feedback={feedback} /> : null}
-      <Button className="w-full" disabled={isUpdatingTask} type="submit">
-        {isUpdatingTask ? (
-          <LoaderCircle className="size-4 animate-spin" />
-        ) : (
-          <Save className="size-4" />
-        )}
-        {isUpdatingTask ? "Updating..." : "Update task"}
-      </Button>
-    </form>
-  )
-}
-
-function TaskList({
+function TaskTable({
   tasks,
   onEdit,
 }: {
@@ -1049,39 +902,51 @@ function TaskList({
     return (
       <div className="empty-state">
         <ClipboardList className="size-5" />
-        <p>No tasks match this view.</p>
+        <p>No tasks found</p>
       </div>
     )
   }
 
   return (
-    <div className="task-list">
-      {tasks.map((task) => (
-        <article className="task-row" key={task.id}>
-          <div className="task-main">
-            <p>
-              Task #{task.id}
-              {task.assigned_to_id ? ` · assigned to ${task.assigned_to_id}` : ""}
-              {task.created_by_id ? ` · created by ${task.created_by_id}` : ""}
-            </p>
-            <h2>{task.title}</h2>
-            {task.description ? <span>{task.description}</span> : null}
-          </div>
-          <div className="task-meta">
-            <Badge variant="secondary">{task.status}</Badge>
-            {task.priority ? <Badge>{task.priority}</Badge> : null}
-            <Button
-              size="sm"
-              type="button"
-              variant="outline"
-              onClick={() => onEdit(task)}
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Button>
-          </div>
-        </article>
-      ))}
+    <div className="table-container">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Priority</TableHead>
+            <TableHead>Assigned</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tasks.map((task) => (
+            <TableRow key={task.id}>
+              <TableCell className="font-medium">{task.id}</TableCell>
+              <TableCell>{task.title}</TableCell>
+              <TableCell>
+                <Badge variant="secondary">{task.status}</Badge>
+              </TableCell>
+              <TableCell>
+                {task.priority && <Badge>{task.priority}</Badge>}
+              </TableCell>
+              <TableCell>{task.assigned_to_id || "-"}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={() => onEdit(task)}
+                >
+                  <Pencil className="size-4" />
+                  Edit
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -1098,19 +963,10 @@ function SearchBox({
       <Search className="size-4" />
       <Input
         value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
+        onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search tasks"
       />
     </label>
-  )
-}
-
-function SectionHeading({ detail, title }: { detail: string; title: string }) {
-  return (
-    <div className="section-heading">
-      <h2>{title}</h2>
-      <p>{detail}</p>
-    </div>
   )
 }
 
@@ -1118,7 +974,7 @@ function Field({
   children,
   label,
 }: {
-  children: ReactNode
+  children: React.ReactNode
   label: string
 }) {
   return (

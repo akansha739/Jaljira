@@ -125,16 +125,16 @@ function LoginPage({ onAuthenticated, onBackToTasks }: LoginPageProps) {
           onClick={onBackToTasks}
         >
           <ArrowLeft className="size-4" />
-          Task Manager
+          Back
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>{authMode === "register" ? "Register" : "Login"}</CardTitle>
+            <CardTitle>{authMode === "register" ? "Create Account" : "Welcome Back"}</CardTitle>
             <CardDescription>
               {authMode === "register"
-                ? "Create your account to start using the task manager."
-                : "Sign in to continue to your tasks."}
+                ? "Create your account"
+                : "Sign in to continue"}
             </CardDescription>
           </CardHeader>
           <CardContent>
