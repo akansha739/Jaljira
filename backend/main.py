@@ -3,6 +3,7 @@ from multiprocessing import freeze_support
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database.api.chat import router as chat_router
 from database.api.routes import router as users_router, tasks_router
 from database.db import create_tables
 from database.middleware import AuthMiddleware
@@ -30,6 +31,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):517\d",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +39,7 @@ app.add_middleware(
 
 app.include_router(users_router)
 app.include_router(tasks_router)
+app.include_router(chat_router)
 
 
 if __name__ == "__main__":

@@ -24,10 +24,17 @@ pwd_context = CryptContext(
 )
 
 TASK_CREATOR_ROLES = {
+    "admin",
+    "project_manager",
     "manager",
     "team_lead",
     "senior_developer",
+    "developer",
 }
+
+
+def normalize_role(role: str | None) -> str:
+    return (role or "").strip().lower().replace("-", "_").replace(" ", "_")
 
 
 @router.post("/register")
@@ -77,10 +84,13 @@ def create_task(task_in: schema.TaskCreate, db: Session = Depends(get_db)):
             detail="Creator user not found",
         )
 
-    if creator.role not in TASK_CREATOR_ROLES:
+    if normalize_role(creator.role) not in TASK_CREATOR_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only manager, team lead, or senior developer can create tasks",
+            detail=(
+                "Only admin, project manager, manager, team lead, "
+                "senior developer, or developer can create tasks"
+            ),
         )
 
     if task_in.assigned_to_id is not None:

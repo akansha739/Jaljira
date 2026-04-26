@@ -27,3 +27,7 @@ export async function apiRequest(path: string, options: ApiRequestOptions = {}) 
     headers: requestHeaders,
   })
 }
+
+export function getWebSocketUrl(path: string) {
+  return `${apiBaseUrl.replace(/^http/, "ws")}${path}`
+}

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { Feedback, TaskFormSubmit, UpdateTaskFormState } from "@/types/tasks"
 import { FeedbackMessage } from "./feedback-message"
 import { Field } from "./field"
+import { TaskChat } from "./task-chat"
 
 export function EditTaskDialog({
   feedback,
@@ -83,6 +84,7 @@ export function EditTaskDialog({
             {isUpdating ? "Updating..." : "Update task"}
           </Button>
         </form>
+        {form.taskId ? <TaskChat taskId={form.taskId} /> : null}
       </DialogContent>
     </Dialog>
   )

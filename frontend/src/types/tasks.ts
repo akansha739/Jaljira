@@ -42,4 +42,13 @@ export type Feedback = {
   message: string
 }
 
+export type ChatMessage = {
+  id: number
+  task_id: number
+  author_id: number
+  author_email: string
+  content: string
+  created_at: string
+}
+
 export type TaskFormSubmit = (event: FormEvent<HTMLFormElement>) => void
