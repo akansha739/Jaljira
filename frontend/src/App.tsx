@@ -660,23 +660,9 @@ function DashboardPage({
 }) {
   return (
     <div className="dashboard-layout">
-      <section className="dashboard-hero">
-        <div className="section-copy">
-          <p className="section-kicker">Task overview</p>
-          <h2>Keep the queue clear and the active work visible.</h2>
-          <p>
-            A tighter summary of current task load, followed by the most recent
-            work items.
-          </p>
-        </div>
-        <Badge className="dashboard-count" variant="secondary">
-          {filteredTasks.length} task{filteredTasks.length === 1 ? "" : "s"}
-        </Badge>
-      </section>
-
       <section className="metrics-strip">
-        {stats.map((stat) => (
-          <div className="metric-tile" key={stat.label}>
+        {stats.map((stat, index) => (
+          <div className="metric-tile" data-tone={index} key={stat.label}>
             <p>{stat.label}</p>
             <strong>{stat.value}</strong>
           </div>
